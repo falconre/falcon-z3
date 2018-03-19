@@ -1,0 +1,17 @@
+[package]
+name = "falcon-z3"
+version = "0.0.1"
+authors = ["Alex Eubanks <endeavor@rainbowsandpwnies.com>"]
+homepage = "https://github.com/falconre/falcon_z3"
+repository = "https://github.com/falconre/falcon_z3"
+description = "Rust bindings for z3"
+readme = "README.md"
+license = "MIT"
+build = "build.rs"
+
+[lib]
+name = "falcon_z3"
+path = "lib/lib.rs"
+
+[build-dependencies]
+bindgen = "0.33.0"
