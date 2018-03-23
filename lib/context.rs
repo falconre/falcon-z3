@@ -54,7 +54,7 @@ impl Context {
         }
     }
 
-    pub fn bvshr(&self, lhs: &Ast, rhs: &Ast) -> Ast {
+    pub fn bvlshr(&self, lhs: &Ast, rhs: &Ast) -> Ast {
         Ast {
             ast: unsafe { z3_sys::Z3_mk_bvlshr(self.context, lhs.ast, rhs.ast) }
         }
@@ -134,6 +134,17 @@ impl Context {
             ast: unsafe { z3_sys::Z3_mk_eq(self.context, lhs.ast, rhs.ast) }
         }
     }
+
+    pub fn ite(&self, condition: &Ast, then: &Ast, else_: &Ast) -> Ast {
+        Ast {
+            ast: unsafe {
+                z3_sys::Z3_mk_ite(self.context,
+                                  condition.ast,
+                                  then.ast,
+                                  else_.ast)
+            }
+        }
+    }
     
     pub fn mk_bv_sort(&self, bits: usize) -> Sort {
         Sort {
@@ -166,6 +177,26 @@ impl Context {
             Ok(Ast { ast: z3_sys::Z3_mk_const(self.context,
                                               symbol,
                                               sort.sort) })
+        }
+    }
+
+    /// Sign extend `rhs` by `i` additional bytes. To sign-extend a 50-bit value
+    /// to a 60-bit value, `i` would be `10`.
+    pub fn sign_ext(&self, i: u32, rhs: &Ast) -> Ast {
+        unsafe {
+            Ast{
+                ast: z3_sys::Z3_mk_sign_ext(self.context, i, rhs.ast)
+            }
+        }
+    }
+
+    /// Zero extend `rhs` by `i` additional bytes. To zero-extend a 50-bit value
+    /// to a 60-bit value, `i` would be `10`.
+    pub fn zero_ext(&self, i: u32, rhs: &Ast) -> Ast {
+        unsafe {
+            Ast{
+                ast: z3_sys::Z3_mk_zero_ext(self.context, i, rhs.ast)
+            }
         }
     }
 }

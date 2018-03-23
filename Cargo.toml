@@ -9,6 +9,12 @@ readme = "README.md"
 license = "MIT"
 build = "build.rs"
 
+[dependencies]
+error-chain = "0.11"
+falcon = {git="https://github.com/falconre/falcon", branch="0.3.0"}
+num-bigint = {git="https://github.com/rust-num/num-bigint", rev="007da2add906db1f1d0b184601d1fc5046cf2c61", features = ["serde"]}
+num-traits = "0.2.1"
+
 [lib]
 name = "falcon_z3"
 path = "lib/lib.rs"

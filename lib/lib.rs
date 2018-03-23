@@ -1,6 +1,12 @@
+#[macro_use] extern crate error_chain;
+extern crate falcon;
+extern crate num_bigint;
+extern crate num_traits;
+
 mod ast;
 mod config;
 mod context;
+pub mod il;
 mod model;
 mod solver;
 mod sort;
@@ -13,6 +19,19 @@ pub use self::context::Context;
 pub use self::model::Model;
 pub use self::solver::{Check, Solver};
 pub use self::sort::Sort;
+
+
+
+pub mod error {
+    error_chain! {
+        types {
+            Error, ErrorKind, ResultExt, Result;
+        }
+        foreign_links {
+            NulError(::std::ffi::NulError);
+        }
+    }
+}
 
 
 #[test]
