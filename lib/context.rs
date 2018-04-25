@@ -7,7 +7,7 @@ use z3_sys;
 
 
 pub struct Context {
-    pub(crate) context: z3_sys::Z3_context
+    pub(crate) context: z3_sys::Z3_context,
 }
 
 
@@ -33,6 +33,12 @@ impl Context {
     pub fn bvmul(&self, lhs: &Ast, rhs: &Ast) -> Ast {
         Ast {
             ast: unsafe { z3_sys::Z3_mk_bvmul(self.context, lhs.ast, rhs.ast) }
+        }
+    }
+
+    pub fn bvnot(&self, t1: &Ast) -> Ast {
+        Ast {
+            ast: unsafe { z3_sys::Z3_mk_bvnot(self.context, t1.ast) }
         }
     }
 
@@ -130,9 +136,10 @@ impl Context {
     }
 
     pub fn eq(&self, lhs: &Ast, rhs: &Ast) -> Ast {
-        Ast {
+        let ast = Ast {
             ast: unsafe { z3_sys::Z3_mk_eq(self.context, lhs.ast, rhs.ast) }
-        }
+        };
+        ast
     }
 
     pub fn ite(&self, condition: &Ast, then: &Ast, else_: &Ast) -> Ast {
@@ -180,11 +187,19 @@ impl Context {
         }
     }
 
+    pub fn not(&self, a: &Ast) -> Ast {
+        unsafe {
+            Ast {
+                ast: z3_sys::Z3_mk_not(self.context, a.ast)
+            }
+        }
+    }
+
     /// Sign extend `rhs` by `i` additional bytes. To sign-extend a 50-bit value
     /// to a 60-bit value, `i` would be `10`.
     pub fn sign_ext(&self, i: u32, rhs: &Ast) -> Ast {
         unsafe {
-            Ast{
+            Ast {
                 ast: z3_sys::Z3_mk_sign_ext(self.context, i, rhs.ast)
             }
         }
@@ -194,7 +209,7 @@ impl Context {
     /// to a 60-bit value, `i` would be `10`.
     pub fn zero_ext(&self, i: u32, rhs: &Ast) -> Ast {
         unsafe {
-            Ast{
+            Ast {
                 ast: z3_sys::Z3_mk_zero_ext(self.context, i, rhs.ast)
             }
         }

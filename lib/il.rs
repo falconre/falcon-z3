@@ -6,6 +6,8 @@ use Solver;
 use Model;
 use error::*;
 use falcon::il;
+use std::collections::HashMap;
+
 
 pub enum SolverResult {
     Unsat,
@@ -29,13 +31,19 @@ pub fn solve(constraints: &[il::Expression], value: &il::Expression)
                                   &expression_to_ast(&context, constraint)?));
     }
 
+    let solver_result = context.mk_var("SOLVER_RESULT",
+                                       &context.mk_bv_sort(value.bits()))?;
+
+    solver.assert(&context.eq(&solver_result,
+                              &expression_to_ast(&context, value)?));
+
     Ok(match solver.check() {
         Check::Unsat |
         Check::Unknown => None,
         Check::Sat => {
-            let ast_value = expression_to_ast(&context, value)?;
+            //let ast_value = expression_to_ast(&context, value)?;
             Model::new(&context, &solver)
-                .and_then(|model| model.get_const_interp(&ast_value))
+                .and_then(|model| model.get_const_interp(&solver_result))
                 .and_then(|constant_ast|
                         constant_ast.get_numeral_decimal_string(&context))
                 .and_then(|numeral_dec_str| {
@@ -49,6 +57,55 @@ pub fn solve(constraints: &[il::Expression], value: &il::Expression)
 }
 
 
+pub fn solve_multi(
+    constraints: &[il::Expression],
+    values: &HashMap<String, il::Expression>
+) -> Result<Option<HashMap<String, il::Constant>>> {
+
+    let config = Config::new().enable_model();
+    let context = Context::new(config);
+    let solver = Solver::new(&context);
+
+    let sort = context.mk_bv_sort(1);
+    let one = context.mk_numeral(1, &sort)?;
+
+    for constraint in constraints {
+        solver.assert(&context.eq(&one,
+                                  &expression_to_ast(&context, constraint)?));
+    }
+
+    let mut solver_variables = HashMap::new();
+
+    for (ref name, ref expression) in values {
+        let var = context.mk_var(name.to_string(),
+                                 &context.mk_bv_sort(expression.bits()))?;
+        solver.assert(
+            &context.eq(&var, &expression_to_ast(&context, &expression)?));
+        solver_variables.insert(name.to_string(), var);
+    }
+
+    Ok(match solver.check() {
+        Check::Unsat |
+        Check::Unknown => None,
+        Check::Sat => {
+            //let ast_value = expression_to_ast(&context, value)?;
+            Model::new(&context, &solver).map(|model|
+                values.iter().map(|(name, expr)| {
+                    let var = &solver_variables[name];
+                    let constant_ast = model.get_const_interp(&var).unwrap();
+                    let dec_str =
+                        constant_ast.get_numeral_decimal_string(&context)
+                            .unwrap();
+                    let constant = il::Constant::from_decimal_string(
+                        &dec_str, expr.bits()).unwrap();
+                    (name.to_string(), constant)
+                })
+                .collect::<HashMap<String, il::Constant>>())
+        }
+    })
+}
+
+
 pub fn expression_to_ast(context: &Context, expression: &il::Expression)
     -> Result<Ast> {
     Ok(match *expression {
@@ -57,23 +114,27 @@ pub fn expression_to_ast(context: &Context, expression: &il::Expression)
             context.mk_var(scalar.name(), &sort)?
         },
         il::Expression::Constant(ref constant) => {
-            if constant.bits() <= 64 {
-                let sort = context.mk_bv_sort(constant.bits());
-                context.mk_numeral(constant.value_u64().unwrap(), &sort)?
-            }
-            else {
-                let big_uint = constant.value_big().unwrap();
-                let sort = context.mk_bv_sort(constant.bits());
-                let mut v = context.mk_numeral(big_uint.to_bytes_be()[0] as u64,
-                                               &sort)?;
-                for _ in 1..(constant.bits() / 8) {
-                    v = context.concat(
-                        &v,
-                        &context.mk_numeral(big_uint.to_bytes_be()[0] as u64,
-                                            &sort)?);
+            let big_uint = constant.value();
+            let sort = context.mk_bv_sort(8);
+            let bytes = big_uint.to_bytes_le();
+            let mut v =
+                if bytes.len() == 0 {
+                    context.mk_numeral(0, &sort)?
                 }
-                v
+                else {
+                    context.mk_numeral(bytes[0] as u64, &sort)?
+                };
+            for i in 1..(constant.bits() / 8) {
+                let numeral =
+                    if bytes.len() <= i {
+                        context.mk_numeral(0, &sort)?
+                    }
+                    else {
+                        context.mk_numeral(bytes[i] as u64, &sort)?
+                    };
+                v = context.concat(&numeral, &v);
             }
+            v
         },
         il::Expression::Add(ref lhs, ref rhs) =>
             context.bvadd(&expression_to_ast(context, lhs)?,
@@ -145,9 +206,57 @@ pub fn expression_to_ast(context: &Context, expression: &il::Expression)
         il::Expression::Sext(bits, ref rhs) =>
             context.sign_ext((bits - rhs.bits()) as u32,
                              &expression_to_ast(context, rhs)?),
-        il::Expression::Trun(bits, ref rhs) => {
+        il::Expression::Trun(bits, ref rhs) =>
             context.extract((bits - 1) as u32, 0,
-                            &expression_to_ast(context, rhs)?)
-        }
+                            &expression_to_ast(context, rhs)?),
+        il::Expression::Ite(ref cond, ref then, ref else_) =>
+            context.ite(
+                &context.eq(&expression_to_ast(context, cond)?,
+                            &context.mk_numeral(1, &context.mk_bv_sort(1))?),
+                &expression_to_ast(context, then)?,
+                &expression_to_ast(context, else_)?
+            )
     })
+}
+
+
+#[test]
+fn test_solve() {
+    let expression = il::expr_const(32, 32);
+    assert_eq!(solve(&[], &expression).unwrap().unwrap(),
+               il::const_(32, 32));
+
+    let expression = il::expr_const(0x1000, 32);
+    assert_eq!(solve(&[], &expression).unwrap().unwrap(),
+               il::const_(0x1000, 32));
+
+    let expression = il::expr_const(0x12345678, 32);
+    assert_eq!(solve(&[], &expression).unwrap().unwrap(),
+               il::const_(0x12345678, 32));
+
+    let expression =
+        il::Expression::add(
+            il::expr_const(32, 32),
+            il::expr_const(1, 32)).unwrap();
+    assert_eq!(
+        solve(&[], &expression).unwrap().unwrap(),
+        il::const_(33, 32));
+
+    let expression =
+        il::Expression::add(
+            il::expr_const(0x420000, 32),
+            il::expr_const(0xffffc000, 32)).unwrap();
+    assert_eq!(
+        solve(&[], &expression).unwrap().unwrap(),
+        il::const_(0x41c000, 32));
+
+    let expression =
+        il::Expression::add(
+            il::Expression::add(
+                il::expr_const(0x420000, 32),
+                il::expr_const(0xffffc000, 32)).unwrap(),
+            il::expr_const(0xffff83dc, 32)).unwrap();
+    assert_eq!(
+        solve(&[], &expression).unwrap().unwrap(),
+        il::const_(0x4143dc, 32));
 }

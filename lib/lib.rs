@@ -47,12 +47,8 @@ fn test() {
 
     let a7 = context.eq(&a, &seven);
 
-    println!("{:?}", a7.to_str(&context));
-
     solver.assert(&a7);
     solver.assert(&context.bvult(&a, &b));
-
-    println!("solver.check() = {:?}", solver.check());
 
     let model = Model::new(&context, &solver).unwrap();
     let b_value = model.get_const_interp(&b).unwrap();
