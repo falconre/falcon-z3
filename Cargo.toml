@@ -1,6 +1,6 @@
 [package]
 name = "falcon-z3"
-version = "0.0.1"
+version = "0.3.1"
 authors = ["Alex Eubanks <endeavor@rainbowsandpwnies.com>"]
 homepage = "https://github.com/falconre/falcon_z3"
 repository = "https://github.com/falconre/falcon_z3"
@@ -11,7 +11,7 @@ build = "build.rs"
 
 [dependencies]
 error-chain = "0.11"
-falcon = {git="https://github.com/falconre/falcon", branch="0.3.0"}
+falcon = { git="https://github.com/falconre/falcon", branch="0.3.1", features=["thread_safe"] }
 num-bigint = {git="https://github.com/rust-num/num-bigint", rev="007da2add906db1f1d0b184601d1fc5046cf2c61", features = ["serde"]}
 num-traits = "0.2.1"
 
@@ -20,4 +20,4 @@ name = "falcon_z3"
 path = "lib/lib.rs"
 
 [build-dependencies]
-bindgen = "0.33.0"
+bindgen = "0.35.0"
