@@ -114,27 +114,33 @@ pub fn expression_to_ast(context: &Context, expression: &il::Expression)
             context.mk_var(scalar.name(), &sort)?
         },
         il::Expression::Constant(ref constant) => {
-            let big_uint = constant.value();
-            let sort = context.mk_bv_sort(8);
-            let bytes = big_uint.to_bytes_le();
-            let mut v =
-                if bytes.len() == 0 {
-                    context.mk_numeral(0, &sort)?
-                }
-                else {
-                    context.mk_numeral(bytes[0] as u64, &sort)?
-                };
-            for i in 1..(constant.bits() / 8) {
-                let numeral =
-                    if bytes.len() <= i {
+            if let Some(value) = constant.value_u64() {
+                let sort = context.mk_bv_sort(constant.bits());
+                context.mk_numeral(value, &sort)?
+            }
+            else {
+                let big_uint = constant.value();
+                let sort = context.mk_bv_sort(8);
+                let bytes = big_uint.to_bytes_le();
+                let mut v =
+                    if bytes.len() == 0 {
                         context.mk_numeral(0, &sort)?
                     }
                     else {
-                        context.mk_numeral(bytes[i] as u64, &sort)?
+                        context.mk_numeral(bytes[0] as u64, &sort)?
                     };
-                v = context.concat(&numeral, &v);
+                for i in 1..(constant.bits() / 8) {
+                    let numeral =
+                        if bytes.len() <= i {
+                            context.mk_numeral(0, &sort)?
+                        }
+                        else {
+                            context.mk_numeral(bytes[i] as u64, &sort)?
+                        };
+                    v = context.concat(&numeral, &v);
+                }
+                v
             }
-            v
         },
         il::Expression::Add(ref lhs, ref rhs) =>
             context.bvadd(&expression_to_ast(context, lhs)?,
