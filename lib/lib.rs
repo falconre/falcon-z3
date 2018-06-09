@@ -2,6 +2,7 @@
 extern crate falcon;
 extern crate num_bigint;
 extern crate num_traits;
+extern crate z3_sys;
 
 mod ast;
 mod config;
@@ -10,7 +11,6 @@ pub mod il;
 mod model;
 mod solver;
 mod sort;
-pub mod z3_sys;
 
 
 pub use self::ast::Ast;
