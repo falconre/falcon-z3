@@ -2,8 +2,8 @@
 name = "falcon-z3"
 version = "0.3.1"
 authors = ["Alex Eubanks <endeavor@rainbowsandpwnies.com>"]
-homepage = "https://github.com/falconre/falcon_z3"
-repository = "https://github.com/falconre/falcon_z3"
+homepage = "https://github.com/falconre/falcon-z3"
+repository = "https://github.com/falconre/falcon-z3"
 description = "Rust bindings for z3 and Falcon"
 readme = "README.md"
 license = "MIT"
