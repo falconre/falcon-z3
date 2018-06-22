@@ -34,10 +34,10 @@ impl<'c> Model<'c> {
                 self.context.context,
                 self.model,
                 t.ast,
-                1,
+                true,
                 &mut ast as *mut z3_sys::Z3_ast)
         };
-        if r > 0 {
+        if r {
             Some(Ast{ ast: ast })
         }
         else {
