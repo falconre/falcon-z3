@@ -1,6 +1,6 @@
 [package]
 name = "falcon-z3"
-version = "0.3.2"
+version = "0.4.0"
 authors = ["Alex Eubanks <endeavor@rainbowsandpwnies.com>"]
 homepage = "https://github.com/falconre/falcon-z3"
 repository = "https://github.com/falconre/falcon-z3"
@@ -12,7 +12,7 @@ build = "build.rs"
 [dependencies]
 error-chain = "0.12"
 #falcon = "0.3.2"
-falcon = { git="http://github.com/falconre/falcon" }
+falcon = "0.4.0"
 num-bigint = { version="0.2", features = ["serde"]}
 num-traits = "0.2.1"
 
