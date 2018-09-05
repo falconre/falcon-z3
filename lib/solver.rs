@@ -41,10 +41,10 @@ impl<'c> Solver<'c> {
         let lbool = unsafe {
             z3_sys::Z3_solver_check(self.context.context, self.solver)
         };
-        if lbool == z3_sys::Z3_lbool_Z3_L_FALSE {
+        if lbool == z3_sys::Z3_L_FALSE {
             Check::Unsat
         }
-        else if lbool == z3_sys::Z3_lbool_Z3_L_TRUE {
+        else if lbool == z3_sys::Z3_L_TRUE {
             Check::Sat
         }
         else {
