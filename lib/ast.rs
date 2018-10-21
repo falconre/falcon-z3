@@ -10,7 +10,7 @@ pub struct Ast {
 
 
 impl Ast {
-    pub fn to_str(&self, context: &Context) -> Option<String> {
+    pub fn to_string(&self, context: &Context) -> Option<String> {
         let s = unsafe {
             z3_sys::Z3_ast_to_string(context.context, self.ast)
         };

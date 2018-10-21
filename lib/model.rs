@@ -1,6 +1,7 @@
 use Ast;
 use Check;
 use Context;
+use Optimize;
 use Solver;
 use std::ptr::null_mut;
 use z3_sys;
@@ -19,6 +20,24 @@ impl<'c> Model<'c> {
         else {
             let m = unsafe {
                 z3_sys::Z3_solver_get_model(context.context, solver.solver)
+            };
+            let model = Model { model: m, context: context };
+            model.inc_ref();
+            Some(model)
+        }
+    }
+
+
+    pub fn new_optimize(context: &'c Context, optimize: &Optimize)
+        -> Option<Model<'c>> {
+
+        if optimize.check() != Check::Sat {
+            None
+        }
+        else {
+            let m = unsafe {
+                z3_sys::Z3_optimize_get_model(context.context,
+                                              optimize.optimize)
             };
             let model = Model { model: m, context: context };
             model.inc_ref();
