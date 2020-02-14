@@ -1,6 +1,6 @@
 [package]
 name = "falcon-z3"
-version = "0.4.3"
+version = "0.4.5"
 authors = ["Alex Eubanks <endeavor@rainbowsandpwnies.com>"]
 homepage = "https://github.com/falconre/falcon-z3"
 repository = "https://github.com/falconre/falcon-z3"
@@ -10,10 +10,13 @@ license = "MIT"
 
 [dependencies]
 error-chain = "0.12"
-falcon = "0.4.3"
+falcon = "0.4.9"
 num-bigint = { version="0.2", features = ["serde"]}
 num-traits = "0.2.1"
-z3-sys = "0.3"
+z3-sys = "0.5"
+
+[features]
+capstone4 = ["falcon/capstone4"]
 
 [lib]
 name = "falcon_z3"

@@ -1,50 +1,44 @@
+use std::ptr::null_mut;
+use z3_sys;
 use Ast;
 use Check;
 use Context;
 use Optimize;
 use Solver;
-use std::ptr::null_mut;
-use z3_sys;
 
 pub struct Model<'c> {
     pub(crate) model: z3_sys::Z3_model,
-    context: &'c Context
+    context: &'c Context,
 }
-
 
 impl<'c> Model<'c> {
     pub fn new(context: &'c Context, solver: &Solver) -> Option<Model<'c>> {
         if solver.check() != Check::Sat {
             None
-        }
-        else {
-            let m = unsafe {
-                z3_sys::Z3_solver_get_model(context.context, solver.solver)
+        } else {
+            let m = unsafe { z3_sys::Z3_solver_get_model(context.context, solver.solver) };
+            let model = Model {
+                model: m,
+                context: context,
             };
-            let model = Model { model: m, context: context };
             model.inc_ref();
             Some(model)
         }
     }
 
-
-    pub fn new_optimize(context: &'c Context, optimize: &Optimize)
-        -> Option<Model<'c>> {
-
+    pub fn new_optimize(context: &'c Context, optimize: &Optimize) -> Option<Model<'c>> {
         if optimize.check() != Check::Sat {
             None
-        }
-        else {
-            let m = unsafe {
-                z3_sys::Z3_optimize_get_model(context.context,
-                                              optimize.optimize)
+        } else {
+            let m = unsafe { z3_sys::Z3_optimize_get_model(context.context, optimize.optimize) };
+            let model = Model {
+                model: m,
+                context: context,
             };
-            let model = Model { model: m, context: context };
             model.inc_ref();
             Some(model)
         }
     }
-
 
     pub fn get_const_interp(&self, t: &Ast) -> Option<Ast> {
         let mut ast: z3_sys::Z3_ast = null_mut();
@@ -54,26 +48,28 @@ impl<'c> Model<'c> {
                 self.model,
                 t.ast,
                 true,
-                &mut ast as *mut z3_sys::Z3_ast)
+                &mut ast as *mut z3_sys::Z3_ast,
+            )
         };
         if r {
-            Some(Ast{ ast: ast })
-        }
-        else {
+            Some(Ast { ast: ast })
+        } else {
             None
         }
     }
 
-
     fn inc_ref(&self) {
-        unsafe { z3_sys::Z3_model_inc_ref(self.context.context, self.model); }
+        unsafe {
+            z3_sys::Z3_model_inc_ref(self.context.context, self.model);
+        }
     }
 
     fn dec_ref(&self) {
-        unsafe { z3_sys::Z3_model_dec_ref(self.context.context, self.model); }
+        unsafe {
+            z3_sys::Z3_model_dec_ref(self.context.context, self.model);
+        }
     }
 }
-
 
 impl<'c> Drop for Model<'c> {
     fn drop(&mut self) {

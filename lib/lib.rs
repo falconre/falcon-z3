@@ -1,4 +1,5 @@
-#[macro_use] extern crate error_chain;
+#[macro_use]
+extern crate error_chain;
 extern crate falcon;
 extern crate num_bigint;
 extern crate num_traits;
@@ -13,7 +14,6 @@ mod optimize;
 mod solver;
 mod sort;
 
-
 pub use self::ast::Ast;
 pub use self::config::Config;
 pub use self::context::Context;
@@ -21,8 +21,6 @@ pub use self::model::Model;
 pub use self::optimize::Optimize;
 pub use self::solver::{Check, Solver};
 pub use self::sort::Sort;
-
-
 
 pub mod error {
     error_chain! {
@@ -35,7 +33,6 @@ pub mod error {
         }
     }
 }
-
 
 #[test]
 fn test() {
@@ -62,39 +59,38 @@ fn test() {
 #[cfg(test)]
 use error::*;
 
-
 #[test]
 fn rdx() -> Result<()> {
     use falcon::il;
 
     let rdx = il::expr_scalar("rdx", 64);
 
-    let constraint0 =
-        il::Expression::cmpneq(
-            il::expr_const(0, 64),
-            il::expr_scalar("rdx", 64))?;
+    let constraint0 = il::Expression::cmpneq(il::expr_const(0, 64), il::expr_scalar("rdx", 64))?;
 
-    let constraint1 =
-        il::Expression::cmpneq(
-            il::expr_const(0xffffffff_ffffffff, 64),
-            il::expr_scalar("rdx", 64))?;
+    let constraint1 = il::Expression::cmpneq(
+        il::expr_const(0xffffffff_ffffffff, 64),
+        il::expr_scalar("rdx", 64),
+    )?;
 
-    let constraint2 =
+    let constraint2 = il::Expression::cmpeq(
         il::Expression::cmpeq(
             il::Expression::cmpeq(
-                il::Expression::cmpeq(
-                    il::Expression::shr(
-                        il::Expression::sub(
-                            il::Expression::add(
-                                il::Expression::mul(
-                                    il::expr_scalar("rdx", 64),
-                                    il::expr_const(1, 64))?,
-                                il::expr_const(0x7FFFFFFFFF, 64))?,
-                            il::expr_const(1, 64))?,
-                        il::expr_const(0x30, 64))?,
-                    il::expr_const(0, 64))?,
-                il::expr_const(0, 1))?,
-            il::expr_const(0, 1))?;
+                il::Expression::shr(
+                    il::Expression::sub(
+                        il::Expression::add(
+                            il::Expression::mul(il::expr_scalar("rdx", 64), il::expr_const(1, 64))?,
+                            il::expr_const(0x7FFFFFFFFF, 64),
+                        )?,
+                        il::expr_const(1, 64),
+                    )?,
+                    il::expr_const(0x30, 64),
+                )?,
+                il::expr_const(0, 64),
+            )?,
+            il::expr_const(0, 1),
+        )?,
+        il::expr_const(0, 1),
+    )?;
 
     let constraints = vec![constraint0, constraint1, constraint2];
 
