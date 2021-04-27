@@ -20,8 +20,8 @@ fn return_solver_result(
     context: &Context,
     ast: &Ast,
     bits: usize,
-) -> Result<Option<il::Constant>> {
-    Ok(match solver.check() {
+) -> Option<il::Constant> {
+    match solver.check() {
         Check::Unsat | Check::Unknown => None,
         Check::Sat => Model::new(&context, &solver)
             .and_then(|model| model.get_const_interp(&ast))
@@ -29,7 +29,7 @@ fn return_solver_result(
             .and_then(|numeral_dec_str| {
                 il::Constant::from_decimal_string(&numeral_dec_str, bits).ok()
             }),
-    })
+    }
 }
 
 fn return_optimize_result(
@@ -37,8 +37,8 @@ fn return_optimize_result(
     context: &Context,
     ast: &Ast,
     bits: usize,
-) -> Result<Option<il::Constant>> {
-    Ok(match optimize.check() {
+) -> Option<il::Constant> {
+    match optimize.check() {
         Check::Unsat | Check::Unknown => None,
         Check::Sat => Model::new_optimize(&context, &optimize)
             .and_then(|model| model.get_const_interp(&ast))
@@ -46,7 +46,7 @@ fn return_optimize_result(
             .and_then(|numeral_dec_str| {
                 il::Constant::from_decimal_string(&numeral_dec_str, bits).ok()
             }),
-    })
+    }
 }
 
 fn solver_init(solver: &Solver, context: &Context, constraints: &[il::Expression]) -> Result<()> {
@@ -91,7 +91,12 @@ pub fn maximize(
 
     optimize.maximize(&optimize_result);
 
-    return_optimize_result(&optimize, &context, &optimize_result, value.bits())
+    Ok(return_optimize_result(
+        &optimize,
+        &context,
+        &optimize_result,
+        value.bits(),
+    ))
 }
 
 pub fn minimize(
@@ -110,7 +115,12 @@ pub fn minimize(
 
     optimize.minimize(&optimize_result);
 
-    return_optimize_result(&optimize, &context, &optimize_result, value.bits())
+    Ok(return_optimize_result(
+        &optimize,
+        &context,
+        &optimize_result,
+        value.bits(),
+    ))
 }
 
 pub fn solve(
@@ -127,7 +137,12 @@ pub fn solve(
 
     solver.assert(&context.eq(&solver_result, &expression_to_ast(&context, value)?));
 
-    return_solver_result(&solver, &context, &solver_result, value.bits())
+    Ok(return_solver_result(
+        &solver,
+        &context,
+        &solver_result,
+        value.bits(),
+    ))
 }
 
 pub fn solve_multi(
@@ -188,7 +203,7 @@ pub fn expression_to_ast(context: &Context, expression: &il::Expression) -> Resu
                 let big_uint = constant.value();
                 let sort = context.mk_bv_sort(8);
                 let bytes = big_uint.to_bytes_le();
-                let mut v = if bytes.len() == 0 {
+                let mut v = if bytes.is_empty() {
                     context.mk_numeral(0, &sort)?
                 } else {
                     context.mk_numeral(bytes[0] as u64, &sort)?

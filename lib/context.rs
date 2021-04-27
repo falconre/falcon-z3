@@ -130,10 +130,9 @@ impl Context {
     }
 
     pub fn eq(&self, lhs: &Ast, rhs: &Ast) -> Ast {
-        let ast = Ast {
+        Ast {
             ast: unsafe { z3_sys::Z3_mk_eq(self.context, lhs.ast, rhs.ast) },
-        };
-        ast
+        }
     }
 
     pub fn ite(&self, condition: &Ast, then: &Ast, else_: &Ast) -> Ast {

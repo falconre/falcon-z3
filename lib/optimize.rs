@@ -14,10 +14,7 @@ impl<'c> Optimize<'c> {
         unsafe {
             z3_sys::Z3_optimize_inc_ref(context.context, optimize);
         }
-        Optimize {
-            optimize: optimize,
-            context: context,
-        }
+        Optimize { optimize, context }
     }
 
     pub fn assert(&self, term: &Ast) {
