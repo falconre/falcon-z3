@@ -197,7 +197,7 @@ dependencies = [
 
 [[package]]
 name = "falcon-z3"
-version = "0.4.12"
+version = "0.5.1"
 dependencies = [
  "error-chain",
  "falcon",

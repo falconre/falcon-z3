@@ -12,13 +12,19 @@ impl Config {
         }
     }
 
-    pub fn enable_model(self: Self) -> Self {
+    pub fn enable_model(self) -> Self {
         let model = CString::new("model").unwrap();
         let true_ = CString::new("true").unwrap();
         unsafe {
             z3_sys::Z3_set_param_value(self.config, model.as_ptr(), true_.as_ptr());
         }
         self
+    }
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

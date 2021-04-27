@@ -20,10 +20,7 @@ impl<'c> Solver<'c> {
         unsafe {
             z3_sys::Z3_solver_inc_ref(context.context, solver);
         }
-        Solver {
-            solver: solver,
-            context: context,
-        }
+        Solver { solver, context }
     }
 
     pub fn assert(&self, constraint: &Ast) {

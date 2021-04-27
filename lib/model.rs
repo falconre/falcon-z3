@@ -17,10 +17,7 @@ impl<'c> Model<'c> {
             None
         } else {
             let m = unsafe { z3_sys::Z3_solver_get_model(context.context, solver.solver) };
-            let model = Model {
-                model: m,
-                context: context,
-            };
+            let model = Model { model: m, context };
             model.inc_ref();
             Some(model)
         }
@@ -31,10 +28,7 @@ impl<'c> Model<'c> {
             None
         } else {
             let m = unsafe { z3_sys::Z3_optimize_get_model(context.context, optimize.optimize) };
-            let model = Model {
-                model: m,
-                context: context,
-            };
+            let model = Model { model: m, context };
             model.inc_ref();
             Some(model)
         }
@@ -52,7 +46,7 @@ impl<'c> Model<'c> {
             )
         };
         if r {
-            Some(Ast { ast: ast })
+            Some(Ast { ast })
         } else {
             None
         }
