@@ -23,9 +23,9 @@ fn return_solver_result(
 ) -> Option<il::Constant> {
     match solver.check() {
         Check::Unsat | Check::Unknown => None,
-        Check::Sat => Model::new(&context, &solver)
-            .and_then(|model| model.get_const_interp(&ast))
-            .and_then(|constant_ast| constant_ast.get_numeral_decimal_string(&context))
+        Check::Sat => Model::new(context, solver)
+            .and_then(|model| model.get_const_interp(ast))
+            .and_then(|constant_ast| constant_ast.get_numeral_decimal_string(context))
             .and_then(|numeral_dec_str| {
                 il::Constant::from_decimal_string(&numeral_dec_str, bits).ok()
             }),
@@ -40,9 +40,9 @@ fn return_optimize_result(
 ) -> Option<il::Constant> {
     match optimize.check() {
         Check::Unsat | Check::Unknown => None,
-        Check::Sat => Model::new_optimize(&context, &optimize)
-            .and_then(|model| model.get_const_interp(&ast))
-            .and_then(|constant_ast| constant_ast.get_numeral_decimal_string(&context))
+        Check::Sat => Model::new_optimize(context, optimize)
+            .and_then(|model| model.get_const_interp(ast))
+            .and_then(|constant_ast| constant_ast.get_numeral_decimal_string(context))
             .and_then(|numeral_dec_str| {
                 il::Constant::from_decimal_string(&numeral_dec_str, bits).ok()
             }),
@@ -54,7 +54,7 @@ fn solver_init(solver: &Solver, context: &Context, constraints: &[il::Expression
     let one = context.mk_numeral(1, &sort)?;
 
     for constraint in constraints {
-        solver.assert(&context.eq(&one, &expression_to_ast(&context, constraint)?));
+        solver.assert(&context.eq(&one, &expression_to_ast(context, constraint)?));
     }
 
     Ok(())
@@ -69,7 +69,7 @@ fn optimize_init(
     let one = context.mk_numeral(1, &sort)?;
 
     for constraint in constraints {
-        optimize.assert(&context.eq(&one, &expression_to_ast(&context, constraint)?));
+        optimize.assert(&context.eq(&one, &expression_to_ast(context, constraint)?));
     }
 
     Ok(())
@@ -162,9 +162,9 @@ pub fn solve_multi(
 
     let mut solver_variables = HashMap::new();
 
-    for (ref name, ref expression) in values {
+    for (name, expression) in values {
         let var = context.mk_var(name.to_string(), &context.mk_bv_sort(expression.bits()))?;
-        solver.assert(&context.eq(&var, &expression_to_ast(&context, &expression)?));
+        solver.assert(&context.eq(&var, &expression_to_ast(&context, expression)?));
         solver_variables.insert(name.to_string(), var);
     }
 
@@ -177,7 +177,7 @@ pub fn solve_multi(
                     .iter()
                     .map(|(name, expr)| {
                         let var = &solver_variables[name];
-                        let constant_ast = model.get_const_interp(&var).unwrap();
+                        let constant_ast = model.get_const_interp(var).unwrap();
                         let dec_str = constant_ast.get_numeral_decimal_string(&context).unwrap();
                         let constant =
                             il::Constant::from_decimal_string(&dec_str, expr.bits()).unwrap();
