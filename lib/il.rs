@@ -2,7 +2,7 @@ use falcon::il;
 use std::collections::HashMap;
 
 use crate::error::{Error, Result};
-use crate::{Ast, Check, Config, Context, Model, Optimize, Solver};
+use crate::{Ast, Config, Context, Model, Optimize, Solver};
 
 pub enum SolverResult {
     Unsat,
@@ -10,112 +10,89 @@ pub enum SolverResult {
     Sat(il::Constant),
 }
 
-fn return_solver_result(
-    solver: &Solver,
-    context: &Context,
-    ast: &Ast,
-    bits: usize,
-) -> Option<il::Constant> {
-    match solver.check() {
-        Check::Unsat | Check::Unknown => None,
-        Check::Sat => Model::new(context, solver)
-            .and_then(|model| model.get_const_interp(ast))
-            .and_then(|constant_ast| constant_ast.get_numeral_decimal_string(context))
-            .and_then(|numeral_dec_str| {
-                il::Constant::from_decimal_string(&numeral_dec_str, bits).ok()
-            }),
-    }
-}
-
-fn return_optimize_result(
-    optimize: &Optimize,
-    context: &Context,
-    ast: &Ast,
-    bits: usize,
-) -> Option<il::Constant> {
-    match optimize.check() {
-        Check::Unsat | Check::Unknown => None,
-        Check::Sat => Model::new_optimize(context, optimize)
-            .and_then(|model| model.get_const_interp(ast))
-            .and_then(|constant_ast| constant_ast.get_numeral_decimal_string(context))
-            .and_then(|numeral_dec_str| {
-                il::Constant::from_decimal_string(&numeral_dec_str, bits).ok()
-            }),
-    }
-}
-
-fn solver_init(solver: &Solver, context: &Context, constraints: &[il::Expression]) -> Result<()> {
-    let sort = context.mk_bv_sort(1)?;
-    let one = context.mk_numeral(1, &sort)?;
-
-    for constraint in constraints {
-        solver.assert(&context.eq(&one, &expression_to_ast(context, constraint)?)?);
-    }
-
-    Ok(())
-}
-
-fn optimize_init(
-    optimize: &Optimize,
+fn assert_constraints(
+    assert_fn: &dyn Fn(&Ast),
     context: &Context,
     constraints: &[il::Expression],
 ) -> Result<()> {
     let sort = context.mk_bv_sort(1)?;
     let one = context.mk_numeral(1, &sort)?;
-
     for constraint in constraints {
-        optimize.assert(&context.eq(&one, &expression_to_ast(context, constraint)?)?);
+        assert_fn(&context.eq(&one, &expression_to_ast(context, constraint)?)?);
+    }
+    Ok(())
+}
+
+fn extract_result(
+    model: Option<Model>,
+    ast: &Ast,
+    bits: usize,
+    context: &Context,
+) -> Option<il::Constant> {
+    model
+        .and_then(|model| model.get_const_interp(ast))
+        .and_then(|constant_ast| constant_ast.get_numeral_decimal_string(context))
+        .and_then(|numeral_dec_str| il::Constant::from_decimal_string(&numeral_dec_str, bits).ok())
+}
+
+fn cmp_to_ite(
+    context: &Context,
+    condition: &Ast,
+    true_val: u64,
+    false_val: u64,
+) -> Result<Ast> {
+    let sort = context.mk_bv_sort(1)?;
+    context.ite(
+        condition,
+        &context.mk_numeral(true_val, &sort)?,
+        &context.mk_numeral(false_val, &sort)?,
+    )
+}
+
+enum OptimizeGoal {
+    Maximize,
+    Minimize,
+}
+
+fn optimize_value(
+    constraints: &[il::Expression],
+    value: &il::Expression,
+    goal: OptimizeGoal,
+) -> Result<Option<il::Constant>> {
+    let config = Config::new()?.enable_model()?;
+    let context = Context::new(config)?;
+    let optimize = Optimize::new(&context)?;
+
+    assert_constraints(&|ast| optimize.assert(ast), &context, constraints)?;
+
+    let result_var = context.mk_var("OPTIMIZE_RESULT", &context.mk_bv_sort(value.bits())?)?;
+    optimize.assert(&context.eq(&result_var, &expression_to_ast(&context, value)?)?);
+
+    match goal {
+        OptimizeGoal::Maximize => optimize.maximize(&result_var),
+        OptimizeGoal::Minimize => optimize.minimize(&result_var),
     }
 
-    Ok(())
+    Ok(extract_result(
+        Model::new_optimize(&context, &optimize),
+        &result_var,
+        value.bits(),
+        &context,
+    ))
 }
 
 pub fn maximize(
     constraints: &[il::Expression],
     value: &il::Expression,
 ) -> Result<Option<il::Constant>> {
-    let config = Config::new()?.enable_model()?;
-    let context = Context::new(config)?;
-    let optimize = Optimize::new(&context)?;
-
-    optimize_init(&optimize, &context, constraints)?;
-
-    let optimize_result = context.mk_var("OPTIMIZE_RESULT", &context.mk_bv_sort(value.bits())?)?;
-
-    optimize.assert(&context.eq(&optimize_result, &expression_to_ast(&context, value)?)?);
-
-    optimize.maximize(&optimize_result);
-
-    Ok(return_optimize_result(
-        &optimize,
-        &context,
-        &optimize_result,
-        value.bits(),
-    ))
+    optimize_value(constraints, value, OptimizeGoal::Maximize)
 }
 
 pub fn minimize(
     constraints: &[il::Expression],
     value: &il::Expression,
 ) -> Result<Option<il::Constant>> {
-    let config = Config::new()?.enable_model()?;
-    let context = Context::new(config)?;
-    let optimize = Optimize::new(&context)?;
-
-    optimize_init(&optimize, &context, constraints)?;
-
-    let optimize_result = context.mk_var("OPTIMIZE_RESULT", &context.mk_bv_sort(value.bits())?)?;
-
-    optimize.assert(&context.eq(&optimize_result, &expression_to_ast(&context, value)?)?);
-
-    optimize.minimize(&optimize_result);
-
-    Ok(return_optimize_result(
-        &optimize,
-        &context,
-        &optimize_result,
-        value.bits(),
-    ))
+    optimize_value(constraints, value, OptimizeGoal::Minimize)
 }
 
 pub fn solve(
@@ -126,17 +103,16 @@ pub fn solve(
     let context = Context::new(config)?;
     let solver = Solver::new(&context)?;
 
-    solver_init(&solver, &context, constraints)?;
+    assert_constraints(&|ast| solver.assert(ast), &context, constraints)?;
 
     let solver_result = context.mk_var("SOLVER_RESULT", &context.mk_bv_sort(value.bits())?)?;
-
     solver.assert(&context.eq(&solver_result, &expression_to_ast(&context, value)?)?);
 
-    Ok(return_solver_result(
-        &solver,
-        &context,
+    Ok(extract_result(
+        Model::new(&context, &solver),
         &solver_result,
         value.bits(),
+        &context,
     ))
 }
 
@@ -148,12 +124,7 @@ pub fn solve_multi(
     let context = Context::new(config)?;
     let solver = Solver::new(&context)?;
 
-    let sort = context.mk_bv_sort(1)?;
-    let one = context.mk_numeral(1, &sort)?;
-
-    for constraint in constraints {
-        solver.assert(&context.eq(&one, &expression_to_ast(&context, constraint)?)?);
-    }
+    assert_constraints(&|ast| solver.assert(ast), &context, constraints)?;
 
     let mut solver_variables = HashMap::new();
 
@@ -163,27 +134,25 @@ pub fn solve_multi(
         solver_variables.insert(name.to_string(), var);
     }
 
-    match solver.check() {
-        Check::Unsat | Check::Unknown => Ok(None),
-        Check::Sat => match Model::new(&context, &solver) {
-            Some(model) => {
-                let mut result = HashMap::new();
-                for (name, expr) in values {
-                    let var = &solver_variables[name];
-                    let constant_ast = model
-                        .get_const_interp(var)
-                        .ok_or_else(|| Error::Z3("model eval failed".into()))?;
-                    let dec_str = constant_ast
-                        .get_numeral_decimal_string(&context)
-                        .ok_or_else(|| Error::Z3("get numeral failed".into()))?;
-                    let constant = il::Constant::from_decimal_string(&dec_str, expr.bits())?;
-                    result.insert(name.to_string(), constant);
-                }
-                Ok(Some(result))
+    let result = match Model::new(&context, &solver) {
+        Some(model) => {
+            let mut result = HashMap::new();
+            for (name, expr) in values {
+                let var = &solver_variables[name];
+                let constant_ast = model
+                    .get_const_interp(var)
+                    .ok_or_else(|| Error::Z3("model eval failed".into()))?;
+                let dec_str = constant_ast
+                    .get_numeral_decimal_string(&context)
+                    .ok_or_else(|| Error::Z3("get numeral failed".into()))?;
+                let constant = il::Constant::from_decimal_string(&dec_str, expr.bits())?;
+                result.insert(name.to_string(), constant);
             }
-            None => Ok(None),
-        },
-    }
+            Ok(Some(result))
+        }
+        None => Ok(None),
+    };
+    result
 }
 
 pub fn expression_to_ast(context: &Context, expression: &il::Expression) -> Result<Ast> {
@@ -268,50 +237,42 @@ pub fn expression_to_ast(context: &Context, expression: &il::Expression) -> Resu
             &expression_to_ast(context, lhs)?,
             &expression_to_ast(context, rhs)?,
         )?,
-        il::Expression::Cmpeq(ref lhs, ref rhs) => {
-            let sort = context.mk_bv_sort(1)?;
-            context.ite(
-                &context.eq(
-                    &expression_to_ast(context, lhs)?,
-                    &expression_to_ast(context, rhs)?,
-                )?,
-                &context.mk_numeral(1, &sort)?,
-                &context.mk_numeral(0, &sort)?,
-            )?
-        }
-        il::Expression::Cmpneq(ref lhs, ref rhs) => {
-            let sort = context.mk_bv_sort(1)?;
-            context.ite(
-                &context.eq(
-                    &expression_to_ast(context, lhs)?,
-                    &expression_to_ast(context, rhs)?,
-                )?,
-                &context.mk_numeral(0, &sort)?,
-                &context.mk_numeral(1, &sort)?,
-            )?
-        }
-        il::Expression::Cmplts(ref lhs, ref rhs) => {
-            let sort = context.mk_bv_sort(1)?;
-            context.ite(
-                &context.bvslt(
-                    &expression_to_ast(context, lhs)?,
-                    &expression_to_ast(context, rhs)?,
-                )?,
-                &context.mk_numeral(1, &sort)?,
-                &context.mk_numeral(0, &sort)?,
-            )?
-        }
-        il::Expression::Cmpltu(ref lhs, ref rhs) => {
-            let sort = context.mk_bv_sort(1)?;
-            context.ite(
-                &context.bvult(
-                    &expression_to_ast(context, lhs)?,
-                    &expression_to_ast(context, rhs)?,
-                )?,
-                &context.mk_numeral(1, &sort)?,
-                &context.mk_numeral(0, &sort)?,
-            )?
-        }
+        il::Expression::Cmpeq(ref lhs, ref rhs) => cmp_to_ite(
+            context,
+            &context.eq(
+                &expression_to_ast(context, lhs)?,
+                &expression_to_ast(context, rhs)?,
+            )?,
+            1,
+            0,
+        )?,
+        il::Expression::Cmpneq(ref lhs, ref rhs) => cmp_to_ite(
+            context,
+            &context.eq(
+                &expression_to_ast(context, lhs)?,
+                &expression_to_ast(context, rhs)?,
+            )?,
+            0,
+            1,
+        )?,
+        il::Expression::Cmplts(ref lhs, ref rhs) => cmp_to_ite(
+            context,
+            &context.bvslt(
+                &expression_to_ast(context, lhs)?,
+                &expression_to_ast(context, rhs)?,
+            )?,
+            1,
+            0,
+        )?,
+        il::Expression::Cmpltu(ref lhs, ref rhs) => cmp_to_ite(
+            context,
+            &context.bvult(
+                &expression_to_ast(context, lhs)?,
+                &expression_to_ast(context, rhs)?,
+            )?,
+            1,
+            0,
+        )?,
         il::Expression::Zext(bits, ref rhs) => context.zero_ext(
             (bits - rhs.bits()) as u32,
             &expression_to_ast(context, rhs)?,

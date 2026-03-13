@@ -3,6 +3,26 @@ use std::ffi::CString;
 use crate::error::{Error, Result};
 use crate::{Ast, Config, Sort};
 
+macro_rules! z3_binop {
+    ($name:ident, $z3_fn:ident) => {
+        pub fn $name(&self, lhs: &Ast, rhs: &Ast) -> Result<Ast> {
+            let ast = unsafe { z3_sys::$z3_fn(self.context, lhs.ast, rhs.ast) }
+                .ok_or_else(|| Error::Z3(concat!(stringify!($z3_fn), " returned null").into()))?;
+            Ok(Ast { ast })
+        }
+    };
+}
+
+macro_rules! z3_unop {
+    ($name:ident, $z3_fn:ident) => {
+        pub fn $name(&self, t1: &Ast) -> Result<Ast> {
+            let ast = unsafe { z3_sys::$z3_fn(self.context, t1.ast) }
+                .ok_or_else(|| Error::Z3(concat!(stringify!($z3_fn), " returned null").into()))?;
+            Ok(Ast { ast })
+        }
+    };
+}
+
 pub struct Context {
     pub(crate) context: z3_sys::Z3_context,
 }
@@ -14,129 +34,32 @@ impl Context {
         Ok(Context { context })
     }
 
-    pub fn bvadd(&self, lhs: &Ast, rhs: &Ast) -> Result<Ast> {
-        let ast = unsafe { z3_sys::Z3_mk_bvadd(self.context, lhs.ast, rhs.ast) }
-            .ok_or_else(|| Error::Z3("Z3_mk_bvadd returned null".into()))?;
-        Ok(Ast { ast })
-    }
+    z3_binop!(bvadd, Z3_mk_bvadd);
+    z3_binop!(bvand, Z3_mk_bvand);
+    z3_binop!(bvmul, Z3_mk_bvmul);
+    z3_binop!(bvor, Z3_mk_bvor);
+    z3_binop!(bvsdiv, Z3_mk_bvsdiv);
+    z3_binop!(bvshl, Z3_mk_bvshl);
+    z3_binop!(bvlshr, Z3_mk_bvlshr);
+    z3_binop!(bvashr, Z3_mk_bvashr);
+    z3_binop!(bvsle, Z3_mk_bvsle);
+    z3_binop!(bvslt, Z3_mk_bvslt);
+    z3_binop!(bvsrem, Z3_mk_bvsrem);
+    z3_binop!(bvsub, Z3_mk_bvsub);
+    z3_binop!(bvudiv, Z3_mk_bvudiv);
+    z3_binop!(bvule, Z3_mk_bvule);
+    z3_binop!(bvult, Z3_mk_bvult);
+    z3_binop!(bvurem, Z3_mk_bvurem);
+    z3_binop!(bvxor, Z3_mk_bvxor);
+    z3_binop!(concat, Z3_mk_concat);
+    z3_binop!(eq, Z3_mk_eq);
 
-    pub fn bvand(&self, lhs: &Ast, rhs: &Ast) -> Result<Ast> {
-        let ast = unsafe { z3_sys::Z3_mk_bvand(self.context, lhs.ast, rhs.ast) }
-            .ok_or_else(|| Error::Z3("Z3_mk_bvand returned null".into()))?;
-        Ok(Ast { ast })
-    }
-
-    pub fn bvmul(&self, lhs: &Ast, rhs: &Ast) -> Result<Ast> {
-        let ast = unsafe { z3_sys::Z3_mk_bvmul(self.context, lhs.ast, rhs.ast) }
-            .ok_or_else(|| Error::Z3("Z3_mk_bvmul returned null".into()))?;
-        Ok(Ast { ast })
-    }
-
-    pub fn bvnot(&self, t1: &Ast) -> Result<Ast> {
-        let ast = unsafe { z3_sys::Z3_mk_bvnot(self.context, t1.ast) }
-            .ok_or_else(|| Error::Z3("Z3_mk_bvnot returned null".into()))?;
-        Ok(Ast { ast })
-    }
-
-    pub fn bvor(&self, lhs: &Ast, rhs: &Ast) -> Result<Ast> {
-        let ast = unsafe { z3_sys::Z3_mk_bvor(self.context, lhs.ast, rhs.ast) }
-            .ok_or_else(|| Error::Z3("Z3_mk_bvor returned null".into()))?;
-        Ok(Ast { ast })
-    }
-
-    pub fn bvsdiv(&self, lhs: &Ast, rhs: &Ast) -> Result<Ast> {
-        let ast = unsafe { z3_sys::Z3_mk_bvsdiv(self.context, lhs.ast, rhs.ast) }
-            .ok_or_else(|| Error::Z3("Z3_mk_bvsdiv returned null".into()))?;
-        Ok(Ast { ast })
-    }
-
-    pub fn bvshl(&self, lhs: &Ast, rhs: &Ast) -> Result<Ast> {
-        let ast = unsafe { z3_sys::Z3_mk_bvshl(self.context, lhs.ast, rhs.ast) }
-            .ok_or_else(|| Error::Z3("Z3_mk_bvshl returned null".into()))?;
-        Ok(Ast { ast })
-    }
-
-    pub fn bvlshr(&self, lhs: &Ast, rhs: &Ast) -> Result<Ast> {
-        let ast = unsafe { z3_sys::Z3_mk_bvlshr(self.context, lhs.ast, rhs.ast) }
-            .ok_or_else(|| Error::Z3("Z3_mk_bvlshr returned null".into()))?;
-        Ok(Ast { ast })
-    }
-
-    pub fn bvashr(&self, lhs: &Ast, rhs: &Ast) -> Result<Ast> {
-        let ast = unsafe { z3_sys::Z3_mk_bvashr(self.context, lhs.ast, rhs.ast) }
-            .ok_or_else(|| Error::Z3("Z3_mk_bvashr returned null".into()))?;
-        Ok(Ast { ast })
-    }
-
-    pub fn bvsle(&self, lhs: &Ast, rhs: &Ast) -> Result<Ast> {
-        let ast = unsafe { z3_sys::Z3_mk_bvsle(self.context, lhs.ast, rhs.ast) }
-            .ok_or_else(|| Error::Z3("Z3_mk_bvsle returned null".into()))?;
-        Ok(Ast { ast })
-    }
-
-    pub fn bvslt(&self, lhs: &Ast, rhs: &Ast) -> Result<Ast> {
-        let ast = unsafe { z3_sys::Z3_mk_bvslt(self.context, lhs.ast, rhs.ast) }
-            .ok_or_else(|| Error::Z3("Z3_mk_bvslt returned null".into()))?;
-        Ok(Ast { ast })
-    }
-
-    pub fn bvsrem(&self, lhs: &Ast, rhs: &Ast) -> Result<Ast> {
-        let ast = unsafe { z3_sys::Z3_mk_bvsrem(self.context, lhs.ast, rhs.ast) }
-            .ok_or_else(|| Error::Z3("Z3_mk_bvsrem returned null".into()))?;
-        Ok(Ast { ast })
-    }
-
-    pub fn bvsub(&self, lhs: &Ast, rhs: &Ast) -> Result<Ast> {
-        let ast = unsafe { z3_sys::Z3_mk_bvsub(self.context, lhs.ast, rhs.ast) }
-            .ok_or_else(|| Error::Z3("Z3_mk_bvsub returned null".into()))?;
-        Ok(Ast { ast })
-    }
-
-    pub fn bvudiv(&self, lhs: &Ast, rhs: &Ast) -> Result<Ast> {
-        let ast = unsafe { z3_sys::Z3_mk_bvudiv(self.context, lhs.ast, rhs.ast) }
-            .ok_or_else(|| Error::Z3("Z3_mk_bvudiv returned null".into()))?;
-        Ok(Ast { ast })
-    }
-
-    pub fn bvule(&self, lhs: &Ast, rhs: &Ast) -> Result<Ast> {
-        let ast = unsafe { z3_sys::Z3_mk_bvule(self.context, lhs.ast, rhs.ast) }
-            .ok_or_else(|| Error::Z3("Z3_mk_bvule returned null".into()))?;
-        Ok(Ast { ast })
-    }
-
-    pub fn bvult(&self, lhs: &Ast, rhs: &Ast) -> Result<Ast> {
-        let ast = unsafe { z3_sys::Z3_mk_bvult(self.context, lhs.ast, rhs.ast) }
-            .ok_or_else(|| Error::Z3("Z3_mk_bvult returned null".into()))?;
-        Ok(Ast { ast })
-    }
-
-    pub fn bvurem(&self, lhs: &Ast, rhs: &Ast) -> Result<Ast> {
-        let ast = unsafe { z3_sys::Z3_mk_bvurem(self.context, lhs.ast, rhs.ast) }
-            .ok_or_else(|| Error::Z3("Z3_mk_bvurem returned null".into()))?;
-        Ok(Ast { ast })
-    }
-
-    pub fn bvxor(&self, lhs: &Ast, rhs: &Ast) -> Result<Ast> {
-        let ast = unsafe { z3_sys::Z3_mk_bvxor(self.context, lhs.ast, rhs.ast) }
-            .ok_or_else(|| Error::Z3("Z3_mk_bvxor returned null".into()))?;
-        Ok(Ast { ast })
-    }
-
-    pub fn concat(&self, t1: &Ast, t2: &Ast) -> Result<Ast> {
-        let ast = unsafe { z3_sys::Z3_mk_concat(self.context, t1.ast, t2.ast) }
-            .ok_or_else(|| Error::Z3("Z3_mk_concat returned null".into()))?;
-        Ok(Ast { ast })
-    }
+    z3_unop!(bvnot, Z3_mk_bvnot);
+    z3_unop!(not, Z3_mk_not);
 
     pub fn extract(&self, high: u32, low: u32, t1: &Ast) -> Result<Ast> {
         let ast = unsafe { z3_sys::Z3_mk_extract(self.context, high, low, t1.ast) }
             .ok_or_else(|| Error::Z3("Z3_mk_extract returned null".into()))?;
-        Ok(Ast { ast })
-    }
-
-    pub fn eq(&self, lhs: &Ast, rhs: &Ast) -> Result<Ast> {
-        let ast = unsafe { z3_sys::Z3_mk_eq(self.context, lhs.ast, rhs.ast) }
-            .ok_or_else(|| Error::Z3("Z3_mk_eq returned null".into()))?;
         Ok(Ast { ast })
     }
 
@@ -165,12 +88,6 @@ impl Context {
             .ok_or_else(|| Error::Z3("Z3_mk_string_symbol returned null".into()))?;
         let ast = unsafe { z3_sys::Z3_mk_const(self.context, symbol, sort.sort) }
             .ok_or_else(|| Error::Z3("Z3_mk_const returned null".into()))?;
-        Ok(Ast { ast })
-    }
-
-    pub fn not(&self, a: &Ast) -> Result<Ast> {
-        let ast = unsafe { z3_sys::Z3_mk_not(self.context, a.ast) }
-            .ok_or_else(|| Error::Z3("Z3_mk_not returned null".into()))?;
         Ok(Ast { ast })
     }
 
