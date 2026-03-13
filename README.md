@@ -2,4 +2,4 @@
 
 Rust bindings for z3.
 
-These bindings are currently building against z3 4.7.1.
+These bindings are currently building against z3 4.13.

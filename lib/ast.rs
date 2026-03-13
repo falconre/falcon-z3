@@ -1,6 +1,6 @@
 use std::ffi::CStr;
-use z3_sys;
-use Context;
+
+use crate::Context;
 
 pub struct Ast {
     pub(crate) ast: z3_sys::Z3_ast,
@@ -12,7 +12,7 @@ impl Ast {
         if s.is_null() {
             None
         } else {
-            let cs = unsafe { CStr::from_ptr(s as *mut i8) };
+            let cs = unsafe { CStr::from_ptr(s) };
             cs.to_str().ok().map(|s| s.to_string())
         }
     }
@@ -22,7 +22,7 @@ impl Ast {
         if s.is_null() {
             None
         } else {
-            let cs = unsafe { CStr::from_ptr(s as *mut i8) };
+            let cs = unsafe { CStr::from_ptr(s) };
             cs.to_str().ok().map(|s| s.to_string())
         }
     }
