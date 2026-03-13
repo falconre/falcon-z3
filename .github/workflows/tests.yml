@@ -4,35 +4,17 @@ jobs:
   clippy_check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y wget build-essential llvm clang libclang-dev
-      - name: capstone from source
-        run: |
-          wget https://github.com/aquynh/capstone/archive/4.0.2.tar.gz
-          tar xf 4.0.2.tar.gz
-          cd capstone-4.0.2
-          make -j 8
-          sudo make install
-      - uses: actions-rs/toolchain@v1
+          sudo apt-get install -y wget build-essential llvm clang libclang-dev libz3-dev
+      - uses: dtolnay/rust-toolchain@stable
         with:
-            toolchain: stable
-            components: clippy
-            override: true
-      - run: rustup component add rustfmt
+          components: clippy, rustfmt
       - name: cargo test
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
+        run: cargo test
       - name: cargo fmt
-        uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: --all -- --check
+        run: cargo fmt --all -- --check
       - name: cargo clippy
-        uses: actions-rs/cargo@v1
-        with:
-          command: clippy
-          args: -- -D warnings
+        run: cargo clippy -- -D warnings

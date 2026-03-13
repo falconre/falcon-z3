@@ -1,6 +1,5 @@
-use z3_sys;
-use Ast;
-use Context;
+use crate::error::{Error, Result};
+use crate::{Ast, Context};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Check {
@@ -15,12 +14,13 @@ pub struct Solver<'c> {
 }
 
 impl<'c> Solver<'c> {
-    pub fn new(context: &'c Context) -> Solver<'c> {
-        let solver = unsafe { z3_sys::Z3_mk_solver(context.context) };
+    pub fn new(context: &'c Context) -> Result<Solver<'c>> {
+        let solver = unsafe { z3_sys::Z3_mk_solver(context.context) }
+            .ok_or_else(|| Error::Z3("Z3_mk_solver returned null".into()))?;
         unsafe {
             z3_sys::Z3_solver_inc_ref(context.context, solver);
         }
-        Solver { solver, context }
+        Ok(Solver { solver, context })
     }
 
     pub fn assert(&self, constraint: &Ast) {

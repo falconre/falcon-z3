@@ -1,10 +1,6 @@
-use std::ptr::null_mut;
-use z3_sys;
-use Ast;
-use Check;
-use Context;
-use Optimize;
-use Solver;
+use std::mem::MaybeUninit;
+
+use crate::{Ast, Check, Context, Optimize, Solver};
 
 pub struct Model<'c> {
     pub(crate) model: z3_sys::Z3_model,
@@ -14,39 +10,39 @@ pub struct Model<'c> {
 impl<'c> Model<'c> {
     pub fn new(context: &'c Context, solver: &Solver) -> Option<Model<'c>> {
         if solver.check() != Check::Sat {
-            None
-        } else {
-            let m = unsafe { z3_sys::Z3_solver_get_model(context.context, solver.solver) };
-            let model = Model { model: m, context };
-            model.inc_ref();
-            Some(model)
+            return None;
         }
+        let m = unsafe { z3_sys::Z3_solver_get_model(context.context, solver.solver) }?;
+        let model = Model { model: m, context };
+        model.inc_ref();
+        Some(model)
     }
 
     pub fn new_optimize(context: &'c Context, optimize: &Optimize) -> Option<Model<'c>> {
         if optimize.check() != Check::Sat {
-            None
-        } else {
-            let m = unsafe { z3_sys::Z3_optimize_get_model(context.context, optimize.optimize) };
-            let model = Model { model: m, context };
-            model.inc_ref();
-            Some(model)
+            return None;
         }
+        let m = unsafe { z3_sys::Z3_optimize_get_model(context.context, optimize.optimize) }?;
+        let model = Model { model: m, context };
+        model.inc_ref();
+        Some(model)
     }
 
     pub fn get_const_interp(&self, t: &Ast) -> Option<Ast> {
-        let mut ast: z3_sys::Z3_ast = null_mut();
+        let mut ast = MaybeUninit::<z3_sys::Z3_ast>::uninit();
         let r = unsafe {
             z3_sys::Z3_model_eval(
                 self.context.context,
                 self.model,
                 t.ast,
                 true,
-                &mut ast as *mut z3_sys::Z3_ast,
+                ast.as_mut_ptr(),
             )
         };
         if r {
-            Some(Ast { ast })
+            Some(Ast {
+                ast: unsafe { ast.assume_init() },
+            })
         } else {
             None
         }

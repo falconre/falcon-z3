@@ -1,5 +1,9 @@
 # falcon-z3
 
-Rust bindings for z3.
+Rust bindings bridging the [Falcon](https://github.com/falconre/falcon) binary analysis framework with the [Z3](https://github.com/Z3Prover/z3) SMT solver. These bindings are currently building against z3 4.13.
 
-These bindings are currently building against z3 4.7.1.
+falcon-z3 translates Falcon's intermediate language (IL) expressions directly into Z3 constraints, letting you perform symbolic reasoning over binary code without manually constructing Z3 terms. Given a set of Falcon IL constraints and an expression of interest, falcon-z3 will set up a Z3 solver context, assert the constraints, and extract concrete values from satisfying models — all returned as native Falcon `Constant` types so they integrate seamlessly with the rest of the Falcon toolchain.
+
+The crate supports the full range of bitvector operations found in Falcon's IL: arithmetic, bitwise logic, shifts (including arithmetic right shift), comparisons (both signed and unsigned), concatenation, extraction, and sign/zero extension. Beyond basic satisfiability checking, falcon-z3 also exposes an optimization interface for finding maximum or minimum values of an expression subject to constraints, which is useful for bounding variable ranges during analysis.
+
+For most use cases, the high-level functions in the `il` module are the main entry point. `solve()` takes a slice of Falcon IL constraints and a target expression, returning an `Option<Constant>` with a satisfying value. `solve_multi()` does the same for multiple variables at once. `maximize()` and `minimize()` find optimal values under constraints. For more control, you can work directly with the `Context`, `Solver`, and `Model` types to build and query Z3 terms incrementally.
