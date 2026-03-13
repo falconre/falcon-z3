@@ -35,12 +35,7 @@ fn extract_result(
         .and_then(|numeral_dec_str| il::Constant::from_decimal_string(&numeral_dec_str, bits).ok())
 }
 
-fn cmp_to_ite(
-    context: &Context,
-    condition: &Ast,
-    true_val: u64,
-    false_val: u64,
-) -> Result<Ast> {
+fn cmp_to_ite(context: &Context, condition: &Ast, true_val: u64, false_val: u64) -> Result<Ast> {
     let sort = context.mk_bv_sort(1)?;
     context.ite(
         condition,
